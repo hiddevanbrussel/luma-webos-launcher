@@ -2,7 +2,7 @@
 name = "luma"
 version = "2.2.160"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.95"
 publish = false
 default-run = "luma"
 license = "MIT"
