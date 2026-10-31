@@ -759,7 +759,7 @@ fn aes_ecb(input: &[u8], key: &[u8], decrypt: bool) -> Result<Vec<u8>, String> {
     }
     let aes = Aes128::new_from_slice(key).map_err(|e| e.to_string())?;
     let mut out = input.to_vec();
-    for block in out.chunks_exact_mut(16) {
+    for block in out.as_chunks_mut::<16>().0 {
         let b = GenericArray::from_mut_slice(block);
         if decrypt {
             aes.decrypt_block(b)

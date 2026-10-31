@@ -1478,7 +1478,7 @@ impl Renderer {
             };
             let mut baked = pixels.clone();
             let a = fill[3].clamp(0., 1.);
-            for pixel in baked.chunks_exact_mut(4) {
+            for pixel in baked.as_chunks_mut::<4>().0 {
                 for i in 0..3 {
                     let frost = f32::from(pixel[i]) * tint[i];
                     pixel[i] = (frost * (1. - a) + fill[i] * 255. * a)

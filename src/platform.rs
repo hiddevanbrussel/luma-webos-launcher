@@ -167,13 +167,13 @@ impl Platform {
                         Ok(())
                     }),
                     Request::StartScreenSaver => {
-                        if webos {
-                            if let Err(error) = call(
+                        if webos
+                            && let Err(error) = call(
                                 "luna://com.webos.service.tvpower/power/turnOnScreenSaver",
                                 json!({}),
-                            ) {
-                                eprintln!("Screensaver: {error}");
-                            }
+                            )
+                        {
+                            eprintln!("Screensaver: {error}");
                         }
                         continue;
                     }
