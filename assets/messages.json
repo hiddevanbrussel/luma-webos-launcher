@@ -930,6 +930,55 @@
     "zh": "北极光",
     "pt": "Aurora boreal"
   },
+  "dusk": {
+    "en": "Dusk",
+    "de": "Dämmerung",
+    "es": "Atardecer",
+    "zh": "黄昏",
+    "pt": "Crepúsculo"
+  },
+  "ocean": {
+    "en": "Ocean",
+    "de": "Ozean",
+    "es": "Océano",
+    "zh": "海洋",
+    "pt": "Oceano"
+  },
+  "ember": {
+    "en": "Ember",
+    "de": "Glut",
+    "es": "Brasa",
+    "zh": "余烬",
+    "pt": "Brasa"
+  },
+  "lagoon": {
+    "en": "Lagoon",
+    "de": "Lagune",
+    "es": "Laguna",
+    "zh": "潟湖",
+    "pt": "Lagoa"
+  },
+  "mist": {
+    "en": "Mist",
+    "de": "Nebel",
+    "es": "Niebla",
+    "zh": "薄雾",
+    "pt": "Névoa"
+  },
+  "canyon": {
+    "en": "Canyon",
+    "de": "Canyon",
+    "es": "Cañón",
+    "zh": "峡谷",
+    "pt": "Cânion"
+  },
+  "aurora": {
+    "en": "Aurora",
+    "de": "Aurora",
+    "es": "Aurora",
+    "zh": "极光",
+    "pt": "Aurora"
+  },
   "liveTV": {
     "en": "Live TV",
     "de": "Live-TV",

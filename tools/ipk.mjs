@@ -116,6 +116,13 @@ export function normalizeAndVerifyPackage(bytes, manifest) {
       'prism',
       'yosemite',
       'northern-lights',
+      'dusk',
+      'ocean',
+      'ember',
+      'lagoon',
+      'mist',
+      'canyon',
+      'aurora',
     ].flatMap((name) => [
       `assets/wallpapers/${name}.jpg`,
       `assets/thumbnails/${name}.jpg`,

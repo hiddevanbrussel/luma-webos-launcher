@@ -3072,7 +3072,7 @@ impl State {
                         self.focus(Target::Background(index + 1), controls);
                         return vec![];
                     }
-                    Direction::Left if index % 3 != 0 => {
+                    Direction::Left if index % 4 != 0 => {
                         self.focus(Target::Background(index - 1), controls);
                         return vec![];
                     }

@@ -8,7 +8,7 @@ pub const CATEGORIES: [&str; 4] = ["Streaming", "Music", "Gaming", "Utilities"];
 // Only enable after verifying actual video compositing on the target TV.
 // A running GStreamer process alone does not prove a working video wallpaper.
 pub const VIDEO_WALLPAPER_SUPPORTED: bool = true;
-pub const BACKGROUNDS: [(&str, &str); 9] = [
+pub const BACKGROUNDS: [(&str, &str); 16] = [
     ("slate", "Slate"),
     ("midnight", "Midnight"),
     ("prism", "Prism"),
@@ -18,6 +18,13 @@ pub const BACKGROUNDS: [(&str, &str); 9] = [
     ("forest", "Forest"),
     ("yosemite", "Yosemite"),
     ("northern-lights", "Northern lights"),
+    ("dusk", "Dusk"),
+    ("ocean", "Ocean"),
+    ("ember", "Ember"),
+    ("lagoon", "Lagoon"),
+    ("mist", "Mist"),
+    ("canyon", "Canyon"),
+    ("aurora", "Aurora"),
 ];
 
 // Generic fallbacks use delimited words, so "game" does not match "endgame".
