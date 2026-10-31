@@ -3677,7 +3677,7 @@ impl State {
         {
             return effects;
         }
-        match self.focus.clone() {
+        match self.focus {
             Target::UiResolutionOpen => {
                 let index = crate::model::UiResolution::ALL
                     .iter()
@@ -4888,7 +4888,7 @@ impl State {
         if self.quick_layer == QuickLayer::Closed {
             return None;
         }
-        match (self.quick_layer, direction, self.focus) {
+        match (self.quick_layer, direction, self.focus.clone()) {
             (QuickLayer::Main, Direction::Down, Target::QuickItem(index)) if index + 1 < 5 => {
                 self.focus(Target::QuickItem(index + 1), &[]);
             }
@@ -4938,7 +4938,7 @@ impl State {
         if self.quick_layer == QuickLayer::Closed {
             return None;
         }
-        match self.focus {
+        match self.focus.clone() {
             Target::QuickItem(0) => {
                 self.open_quick_sound();
                 Some(vec![])
