@@ -10,7 +10,13 @@
   "appDescription": "A native, remote-first webOS launcher with customizable home screens, media, games, widgets, and wallpapers.",
   "resolution": "1920x1080",
   "appCategory": ["home"],
-  "requiredACG": ["application.launcher", "application.query", "audio.operation", "lunabus.query", "network.query"],
+  "requiredACG": [
+    "application.launcher",
+    "application.query",
+    "audio.operation",
+    "lunabus.query",
+    "network.query"
+  ],
   "handlesRelaunch": false,
   "iconColor": "#25272d",
   "splashBackground": "splash.png",
