@@ -307,6 +307,155 @@ pub fn start(
     });
 }
 
+fn normalize_code(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        .to_ascii_uppercase()
+}
+fn dashboard_page(error: Option<&str>) -> String {
+    let mut content = String::from(
+        "<p>This page is open while Luma is on the TV. Enter the code shown under Settings, Smart Home, plus your Home Assistant address and a long-lived access token.</p><p>In Home Assistant: your profile, Security, Long-lived access tokens.</p>",
+    );
+    if let Some(error) = error {
+        content.push_str(&format!(
+            "<div role=\"alert\" class=\"error\">{}</div>",
+            phone_link::escape_html(error)
+        ));
+    }
+    content.push_str(
+        "<form method=\"post\" action=\"/connect\"><label>Code on the TV<input type=\"text\" name=\"code\" maxlength=\"16\" required autocomplete=\"off\"></label><label>Home Assistant address<input type=\"text\" name=\"server\" placeholder=\"http://homeassistant.local:8123\" maxlength=\"256\" required autocomplete=\"off\"></label><label>Long-lived access token<input type=\"password\" name=\"token\" maxlength=\"2048\" required autocomplete=\"off\"></label><button type=\"submit\">Connect TV</button></form>",
+    );
+    html_page("Connect Luma to Home Assistant", &content)
+}
+/// Checks the phone form before any Home Assistant request. The token is returned
+/// to the caller and is not logged.
+fn dashboard_submission(expected_code: &str, body: &str) -> Result<(String, String), String> {
+    let fields = parse_form(body);
+    if fields.len() > 3 {
+        return Err("Invalid form fields".into());
+    }
+    for name in fields.keys() {
+        if !matches!(name.as_str(), "code" | "server" | "token") {
+            return Err("Invalid form fields".into());
+        }
+    }
+    let supplied = fields.get("code").map(String::as_str).unwrap_or("");
+    if supplied.trim().is_empty() {
+        return Err("Enter the code shown on the TV".into());
+    }
+    if !constant_time_eq(&normalize_code(supplied), &normalize_code(expected_code)) {
+        return Err("That code does not match the TV".into());
+    }
+    let server = fields
+        .get("server")
+        .and_then(|value| smart_home::normalize_url(value))
+        .ok_or_else(|| "Enter a valid Home Assistant address".to_string())?;
+    let token = fields
+        .get("token")
+        .ok_or_else(|| "Enter an access token".to_string())?;
+    if token.is_empty() || token.len() > 2048 || token.chars().any(char::is_control) {
+        return Err("Invalid access token".into());
+    }
+    Ok((server, token.clone()))
+}
+fn dashboard_loop(
+    listener: std::net::TcpListener,
+    path: PathBuf,
+    code: String,
+    commands: Sender<Command>,
+) {
+    loop {
+        let (mut stream, _) = match listener.accept() {
+            Ok(pair) => pair,
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(75));
+                continue;
+            }
+            Err(_) => return,
+        };
+        let Ok((method, route, body)) = phone_link::read_request(&mut stream) else {
+            reply(
+                &mut stream,
+                "400 Bad Request",
+                &html_page("Invalid request", "<p>Reload the page.</p>"),
+            );
+            continue;
+        };
+        let (path_only, _) = route.split_once('?').unwrap_or((route.as_str(), ""));
+        if method == "GET" && path_only == "/" {
+            reply(&mut stream, "200 OK", &dashboard_page(None));
+        } else if method == "POST" && path_only == "/connect" {
+            match dashboard_submission(&code, &body) {
+                Ok((server, token)) => match validate_long_lived(&server, &token) {
+                    Ok(secrets) => {
+                        if smart_home::save_auth(&path, &secrets).is_err() {
+                            reply(
+                                &mut stream,
+                                "500 Internal Server Error",
+                                &dashboard_page(Some("Cannot save credentials securely")),
+                            );
+                            continue;
+                        }
+                        reply(
+                            &mut stream,
+                            "200 OK",
+                            &html_page(
+                                "Luma is connected",
+                                &format!(
+                                    "<p>Connected to {}.</p><p>You can close this page.</p>",
+                                    phone_link::escape_html(&server)
+                                ),
+                            ),
+                        );
+                        let _ = commands.send(Command::CredentialsReady { server });
+                    }
+                    Err(error) => reply(
+                        &mut stream,
+                        "400 Bad Request",
+                        &dashboard_page(Some(error)),
+                    ),
+                },
+                Err(error) => reply(
+                    &mut stream,
+                    "400 Bad Request",
+                    &dashboard_page(Some(&error)),
+                ),
+            }
+        } else {
+            reply(
+                &mut stream,
+                "404 Not Found",
+                &html_page("Page not found", "<p>Return to the TV.</p>"),
+            );
+        }
+    }
+}
+/// Serves the Home Assistant form for as long as Luma runs. The QR sign-in on
+/// the connect screen stays a separate, short-lived listener.
+pub fn start_dashboard(path: PathBuf, updates: Sender<Update>, commands: Sender<Command>) {
+    let Some(ip) = phone_link::lan_ip() else {
+        return;
+    };
+    let (listener, port) = match phone_link::bind_listener(&ip) {
+        Ok(value) => value,
+        Err(_) => return,
+    };
+    let code = random_hex()
+        .chars()
+        .take(6)
+        .collect::<String>()
+        .to_ascii_uppercase();
+    let url = format!("http://{ip}:{port}/");
+    eprintln!("Luma Home Assistant page: {url}");
+    let _ = updates.send(Update::DashboardReady {
+        url,
+        code: code.clone(),
+    });
+    thread::spawn(move || dashboard_loop(listener, path, code, commands));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -363,5 +512,29 @@ mod tests {
                 .iter()
                 .any(|field| matches!(field.kind, FieldType::Secret))
         );
+    }
+    #[test]
+    fn dashboard_form_requires_the_tv_code_and_hides_errors() {
+        let page = dashboard_page(Some("<script>bad</script>"));
+        assert!(page.contains("name=\"token\""));
+        assert!(page.contains("type=\"password\""));
+        assert!(page.contains("&lt;script&gt;"));
+        assert!(!page.contains("<script>bad"));
+        let body = encode_form(&[
+            ("code", "ab12 cd"),
+            ("server", "http://ha.local:8123/"),
+            ("token", "special&token+"),
+        ]);
+        let (server, token) = dashboard_submission("AB12CD", &body).unwrap();
+        assert_eq!(server, "http://ha.local:8123");
+        assert_eq!(token, "special&token+");
+        assert!(dashboard_submission("AB12CD", &encode_form(&[("code", "NOPE")])).is_err());
+        let extra = encode_form(&[
+            ("code", "AB12CD"),
+            ("server", "http://ha.local:8123"),
+            ("token", "tok"),
+            ("extra", "no"),
+        ]);
+        assert!(dashboard_submission("AB12CD", &extra).is_err());
     }
 }

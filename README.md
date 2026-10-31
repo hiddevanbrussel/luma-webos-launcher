@@ -2,13 +2,18 @@
 
 **A fast, remote-first launcher and home screen for LG webOS TVs, with an Apple TV feel.**
 
-Luma replaces the cluttered LG Home with one calm screen: your favorite apps, live video wallpapers, widgets, your Jellyfin library, your PC games over Moonlight and your Home Assistant devices. It's a native Rust app drawn with OpenGL ES, so it stays smooth on TV hardware.
+This repository is [hiddevanbrussel/luma-webos-launcher](https://github.com/hiddevanbrussel/luma-webos-launcher), a fork of [funnymataleao/luma-webos-launcher](https://github.com/funnymataleao/luma-webos-launcher). Luma replaces the cluttered LG Home with one calm screen: your favorite apps, live video wallpapers, widgets, your Jellyfin library, your PC games over Moonlight and your Home Assistant devices. It's a native Rust app drawn with OpenGL ES, so it stays smooth on TV hardware.
 
-Free and open source (MIT). Fork it, change it, ship it.
+Free and open source (MIT).
+
+## This fork
+
+- **Home Assistant from your phone.** While Luma is running, Settings › Smart Home shows an address and a code. Open that page on your phone, on the same network, and enter the Home Assistant address plus a long-lived access token. The QR sign-in on the TV still works.
+- **Aerial screensaver.** Settings › System › Aerial screensaver starts the TV screensaver after the idle time. **Open Aerial screensaver** launches [WebOS Aerial Screensaver](https://github.com/aabytt/custom-screensaver-aerial). Install that app from Homebrew Channel and press Apply once. It needs a rooted TV.
 
 <a href="https://github.com/funnymataleao/luma-webos-launcher/releases/download/v2.2.160/Luma-promo.mp4"><img src="docs/promo-preview.webp" width="100%" alt="Luma promo video"></a>
 
-▶ [Watch the full promo video (1 min)](https://github.com/funnymataleao/luma-webos-launcher/releases/download/v2.2.160/Luma-promo.mp4)
+▶ [Watch the upstream promo video (1 min)](https://github.com/funnymataleao/luma-webos-launcher/releases/download/v2.2.160/Luma-promo.mp4)
 
 ![Home](docs/screenshots/home.jpg)
 
@@ -43,9 +48,14 @@ Free and open source (MIT). Fork it, change it, ship it.
 
 **Smart Home (Home Assistant)**
 
-- Pair by scanning a QR code with your phone. Your token never has to be typed on the TV.
+- Connect from the phone page while Luma is running, or pair by scanning a QR code. Your token never has to be typed on the TV.
 - Status chips (climate, alarm, lights, doors), scenes, live cameras and device tiles you can toggle with the remote.
 - Hide any camera or device from the TV.
+
+**Screensaver**
+
+- After a chosen idle time, Home clears to the wallpaper.
+- With Aerial screensaver on, that same idle time starts the TV screensaver. Apply [WebOS Aerial Screensaver](https://github.com/aabytt/custom-screensaver-aerial) first.
 
 **Remote and pointer**
 
@@ -128,17 +138,6 @@ Free and open source (MIT). Fork it, change it, ship it.
   </tr>
 </table>
 
-## Support Luma
-
-Luma is built and maintained by one person in their free time. It's free and will stay free. Donations decide how much time goes into it: they keep updates coming, pay for test hardware and move the roadmap forward (Plex, more TV models, new widgets). If Luma makes your TV better, a coffee helps keep it alive.
-
-Made by [Denis Efremov](https://denisefremov.com), an interface designer with 16+ years of experience and the maker of Luma and Rift, two free open-source launchers. Read the design story in the [Luma case study](https://denisefremov.com/work/luma.html).
-
-- ☕ **Ko-fi:** [ko-fi.com/dennis_oizo](https://ko-fi.com/dennis_oizo)
-- 🍵 **Buy Me a Coffee:** [buymeacoffee.com/denisefremov](https://buymeacoffee.com/denisefremov)
-- 💖 **GitHub Sponsors:** [github.com/sponsors/funnymataleao](https://github.com/sponsors/funnymataleao)
-- 🪙 **USDT (TRC20):** `TKPVRy9oYjLsbQMtbDzvkXDu73mg7tLN5u`
-
 ## Root features
 
 Luma runs as a normal app without root. On a rooted TV (Homebrew Channel, elevated), **Settings › System › Root features** appears with extras:
@@ -160,7 +159,7 @@ Without root the Root features section is hidden, and Luma never tries to change
 Add this repository in Homebrew Channel › Settings › Repositories:
 
 ```text
-https://github.com/funnymataleao/luma-webos-launcher/releases/latest/download/repo.json
+https://github.com/hiddevanbrussel/luma-webos-launcher/releases/latest/download/repo.json
 ```
 
 Then install **Luma** and **Luma Player** from the list. The companion player is required for Jellyfin and Plex video playback.
@@ -223,13 +222,9 @@ Brand logos belong to their owners. Luma is not affiliated with LG, Apple, Amazo
 
 ## Credits
 
-Luma started as a fork of **[ecklf/lg-luma](https://github.com/ecklf/lg-luma)** by ecklf and contributors. Thank you for the native renderer, the build pipeline and the original idea.
+This fork tracks [funnymataleao/luma-webos-launcher](https://github.com/funnymataleao/luma-webos-launcher) by [Denis Efremov](https://denisefremov.com). The design story is in the [Luma case study](https://denisefremov.com/work/luma.html). Upstream started as a fork of **[ecklf/lg-luma](https://github.com/ecklf/lg-luma)** by ecklf and contributors.
 
-Also thanks to [webOS Homebrew](https://www.webosbrew.org/), [Moonlight](https://moonlight-stream.org/), [Sunshine](https://github.com/LizardByte/Sunshine) / [Apollo](https://github.com/ClassicOldSong/Apollo), [Jellyfin](https://jellyfin.org/) and [Home Assistant](https://www.home-assistant.io/).
-
-## How this was made
-
-Most of the code in this fork was written with AI coding assistants (Claude Code and OpenAI Codex), directed and tested on a real LG OLED C1 by the maintainer. Every change was checked on the TV before release.
+Also thanks to [webOS Homebrew](https://www.webosbrew.org/), [Moonlight](https://moonlight-stream.org/), [Sunshine](https://github.com/LizardByte/Sunshine) / [Apollo](https://github.com/ClassicOldSong/Apollo), [Jellyfin](https://jellyfin.org/), [Home Assistant](https://www.home-assistant.io/) and [WebOS Aerial Screensaver](https://github.com/aabytt/custom-screensaver-aerial).
 
 ## License
 

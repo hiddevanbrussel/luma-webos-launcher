@@ -549,6 +549,8 @@ pub struct State {
     pub ambient: Option<(bool, Instant)>,
     /// Last real remote, pointer or keyboard input, for the screensaver.
     pub last_input: Instant,
+    /// Ask the TV to start its screensaver on the next frame.
+    pub launch_screensaver: bool,
     /// Stack card under focus and since when; ids already prefetched.
     pub movie_prefetch: (Option<(Target, Instant)>, std::collections::HashSet<i64>),
     /// The prefetch still downloading, so they go one at a time and never
@@ -614,6 +616,9 @@ pub struct State {
     pub ha_camera: Option<String>,
     pub ha_signout_armed: bool,
     pub ha_token_qr: bool,
+    /// LAN page for Home Assistant setup, open while Luma is running.
+    pub ha_dashboard_url: String,
+    pub ha_dashboard_code: String,
     pub widget_data: crate::widgets::Data,
     /// Full-screen page opened from a widget.
     pub widget_detail: Option<crate::widgets::Detail>,
@@ -735,6 +740,7 @@ impl State {
             movie_cache: HashMap::new(),
             ambient: None,
             last_input: Instant::now(),
+            launch_screensaver: false,
             movie_prefetch_busy: None,
             movie_prefetch: (None, std::collections::HashSet::new()),
             web_player_item: None,
@@ -790,6 +796,8 @@ impl State {
             ha_camera: None,
             ha_signout_armed: false,
             ha_token_qr: false,
+            ha_dashboard_url: String::new(),
+            ha_dashboard_code: String::new(),
             widget_data: Default::default(),
             widget_detail: None,
             widget_detail_started: None,
@@ -919,6 +927,10 @@ impl State {
             }
             crate::smart_home::Update::PairingError(reason) => {
                 self.ha_auth_status = reason;
+            }
+            crate::smart_home::Update::DashboardReady { url, code } => {
+                self.ha_dashboard_url = url;
+                self.ha_dashboard_code = code;
             }
             crate::smart_home::Update::Authorized { server } => {
                 self.preferences.smart_home.server_url = server;
@@ -4537,6 +4549,15 @@ impl State {
                     }
                     7 => return vec![Effect::Launch("com.webos.app.home".into())],
                     8 => return vec![Effect::Launch("com.denisefremov.luma.aerials".into())],
+                    11 => {
+                        self.preferences.aerial_screensaver = !self.preferences.aerial_screensaver;
+                        return vec![Effect::Save];
+                    }
+                    12 => {
+                        return vec![Effect::Launch(
+                            crate::platform::AERIAL_SCREENSAVER_ID.into(),
+                        )];
+                    }
                     6 => {
                         self.subpage = Some(Subpage::Greeting);
                         self.focus = Target::GreetingStyle;
@@ -5164,6 +5185,9 @@ impl State {
             && self.moving.is_none();
         if quiet && self.last_input.elapsed().as_secs() >= u64::from(minutes) * 60 {
             self.ambient = Some((true, Instant::now()));
+            if self.preferences.aerial_screensaver {
+                self.launch_screensaver = true;
+            }
             self.dirty = true;
         }
     }

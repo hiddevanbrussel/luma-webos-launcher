@@ -2557,6 +2557,10 @@ fn run() -> Result<(), String> {
             hw_wallpaper::log_transition_event(state.preferences.video_index, "crossfade_end");
         }
         state.tick();
+        if state.launch_screensaver {
+            state.launch_screensaver = false;
+            platform.send(platform::Request::StartScreenSaver);
+        }
         // One call per frame: it marks the id as fetched, so a second call
         // for another service would never see it.
         if let Some(id) = state.movie_prefetch() {
@@ -2798,6 +2802,8 @@ fn run() -> Result<(), String> {
                             eprintln!("{error}");
                             if error == platform::INSTALL_PLAYER_MESSAGE {
                                 state.notify(platform::INSTALL_PLAYER_MESSAGE);
+                            } else if error == platform::INSTALL_AERIAL_MESSAGE {
+                                state.notify(platform::INSTALL_AERIAL_MESSAGE);
                             } else {
                                 state.notify(state.preferences.language.t("appOpenError"));
                             }

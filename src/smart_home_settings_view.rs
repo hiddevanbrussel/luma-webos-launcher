@@ -89,8 +89,10 @@ fn cell(out: &mut Scene, state: &State, assets: &Assets, target: Target, r: Rect
 fn row(y: f32) -> Rect {
     Rect::new(LEFT, y, ROW_W, ROW_HEIGHT)
 }
-fn summary(out: &mut Scene, state: &State, assets: &Assets, y: f32) {
-    let r = Rect::new(LEFT, y, ROW_W, 132.);
+fn summary(out: &mut Scene, state: &State, assets: &Assets, y: f32) -> f32 {
+    let phone = !state.ha_dashboard_url.is_empty();
+    let h = if phone { 248. } else { 132. };
+    let r = Rect::new(LEFT, y, ROW_W, h);
     out.shape(r, super::tvos_settings_view::CELL_RADIUS, c(0xffffff, 0.07));
     out.text(
         "Home Assistant",
@@ -131,6 +133,34 @@ fn summary(out: &mut Scene, state: &State, assets: &Assets, y: f32) {
             false,
         );
     }
+    if phone {
+        line(
+            out,
+            assets,
+            "Phone page",
+            Rect::new(r.x + S32, r.y + 116., ROW_W - 64., 36.),
+            0.62,
+            500,
+        );
+        line(
+            out,
+            assets,
+            &state.ha_dashboard_url,
+            Rect::new(r.x + S32, r.y + 154., ROW_W - 64., 36.),
+            1.,
+            600,
+        );
+        let code = format!("Code {}", state.ha_dashboard_code);
+        line(
+            out,
+            assets,
+            &code,
+            Rect::new(r.x + S32, r.y + 192., ROW_W - 64., 36.),
+            1.,
+            650,
+        );
+    }
+    h
 }
 fn shown(state: &State, section: usize) -> String {
     if state.ha_entities.is_empty() {
@@ -140,7 +170,7 @@ fn shown(state: &State, section: usize) -> String {
 }
 fn root(out: &mut Scene, state: &State, assets: &Assets) {
     let y = FIRST - state.scroll;
-    summary(out, state, assets, y);
+    let card_h = summary(out, state, assets, y);
     let connected = !state.preferences.smart_home.server_url.is_empty();
     let rows: Vec<(Target, &str, String, bool)> = if connected {
         vec![
@@ -174,7 +204,7 @@ fn root(out: &mut Scene, state: &State, assets: &Assets) {
             state,
             assets,
             target,
-            row(y + 132. + S24 + i as f32 * PITCH),
+            row(y + card_h + S24 + i as f32 * PITCH),
             Row {
                 label,
                 value: &value,
@@ -282,13 +312,13 @@ fn connect(out: &mut Scene, state: &State, assets: &Assets) {
     let mut y = FIRST - state.scroll;
     if !state.preferences.smart_home.server_url.is_empty() {
         // Already signed in: no QR, just the connection and the way out.
-        summary(out, state, assets, y);
+        let card_h = summary(out, state, assets, y);
         cell(
             out,
             state,
             assets,
             Target::SmartSignOut,
-            row(y + 132. + S24),
+            row(y + card_h + S24),
             Row {
                 label: "Sign out",
                 value: "",
@@ -298,6 +328,28 @@ fn connect(out: &mut Scene, state: &State, assets: &Assets) {
         );
         out.draw.push(Draw::Clip(None));
         return;
+    }
+    if !state.ha_dashboard_url.is_empty() {
+        caption(out, "From your phone", y);
+        y += 46.;
+        line(
+            out,
+            assets,
+            &state.ha_dashboard_url,
+            Rect::new(LEFT + 21., y, ROW_W - 42., 40.),
+            1.,
+            600,
+        );
+        y += 44.;
+        let code = format!("Code {}", state.ha_dashboard_code);
+        out.text(
+            &code,
+            Rect::new(LEFT + 21., y, ROW_W - 42., 52.),
+            text(40., 700, 0.),
+            c(INK, 1.),
+            false,
+        );
+        y += 60. + S16;
     }
     caption(out, "Server", y);
     y += 46.;

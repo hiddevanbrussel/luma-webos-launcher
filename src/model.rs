@@ -269,6 +269,9 @@ pub struct Preferences {
     /// Minutes without the remote before Home clears to the wallpaper
     /// (0 = never).
     pub screensaver_minutes: u8,
+    /// After that idle time, also start the TV screensaver. Aerial videos
+    /// show once WebOS Aerial Screensaver is installed and applied.
+    pub aerial_screensaver: bool,
     /// User-requested UI surface density. Auto uses auto_ui_cap.
     pub ui_resolution: UiResolution,
     /// Last stable Auto ceiling for this particular TV. Lowered only; no oscillation.
@@ -331,6 +334,7 @@ impl Default for Preferences {
             phrase_subtitle_pct: 130,
             ui_sounds: true,
             screensaver_minutes: 10,
+            aerial_screensaver: false,
             ui_resolution: UiResolution::Qhd,
             auto_ui_cap: UiResolution::Uhd,
 

@@ -160,6 +160,11 @@ pub enum Update {
     },
     QrExpired,
     PairingError(String),
+    /// Phone page that stays up for the whole time Luma is running.
+    DashboardReady {
+        url: String,
+        code: String,
+    },
     Authorized {
         server: String,
     },
@@ -184,6 +189,11 @@ impl Service {
         let pair_commands = sender.clone();
         let (updates, receiver) = mpsc::channel();
         let discovery_updates = updates.clone();
+        crate::smart_home_pairing::start_dashboard(
+            path.clone(),
+            updates.clone(),
+            pair_commands.clone(),
+        );
         thread::spawn(move || {
             use mdns_sd::{ServiceDaemon, ServiceEvent};
             let Ok(discovery) = ServiceDaemon::new() else {

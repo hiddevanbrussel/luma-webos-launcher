@@ -34,6 +34,9 @@ pub fn redirect_to_home() -> Result<bool, String> {
 pub enum Request {
     Refresh,
     Launch(String),
+    /// Ask the TV to start its screensaver. Aerial videos play when
+    /// `org.aabytt.webos.custom-screensaver-aerial` has been applied.
+    StartScreenSaver,
     MoonlightLaunch(crate::moonlight::MoonlightLink, i64),
     /// Close another app (best effort; webOS may refuse without root).
     CloseApp(String),
@@ -152,10 +155,28 @@ impl Platform {
                                 json!({"id": id}),
                             )
                             .map(|_| ())
+                            .map_err(|error| {
+                                if id == AERIAL_SCREENSAVER_ID && player_not_installed(&error) {
+                                    INSTALL_AERIAL_MESSAGE.to_owned()
+                                } else {
+                                    error
+                                }
+                            })
                         }
                     } else {
                         Ok(())
                     }),
+                    Request::StartScreenSaver => {
+                        if webos {
+                            if let Err(error) = call(
+                                "luna://com.webos.service.tvpower/power/turnOnScreenSaver",
+                                json!({}),
+                            ) {
+                                eprintln!("Screensaver: {error}");
+                            }
+                        }
+                        continue;
+                    }
                 };
                 if responses.send(response).is_err() {
                     break;
@@ -177,6 +198,9 @@ impl Platform {
 /// Luma's own player: a small web app around the TV's web video element.
 pub const WEB_PLAYER_ID: &str = "com.denisefremov.luma.player";
 pub const INSTALL_PLAYER_MESSAGE: &str = "Install Luma Player from Homebrew Channel";
+pub const AERIAL_SCREENSAVER_ID: &str = "org.aabytt.webos.custom-screensaver-aerial";
+pub const INSTALL_AERIAL_MESSAGE: &str =
+    "Install Aerial screensaver from Homebrew Channel, then press Apply";
 
 // webOS versions use slightly different texts for unknown application IDs.
 fn player_not_installed(error: &str) -> bool {
