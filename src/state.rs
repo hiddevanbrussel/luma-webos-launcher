@@ -3677,7 +3677,7 @@ impl State {
         {
             return effects;
         }
-        match self.focus {
+        match self.focus.clone() {
             Target::UiResolutionOpen => {
                 let index = crate::model::UiResolution::ALL
                     .iter()
