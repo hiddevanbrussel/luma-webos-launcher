@@ -1091,7 +1091,7 @@ impl Renderer {
             }
             match self.glyph(c, selected) {
                 Ok(geometry) => {
-                    for triangle in geometry.chunks_exact(3) {
+                    for triangle in geometry.as_chunks::<3>().0 {
                         // True sample coverage needs only the original fill.
                         // Exclude the boundary fringe, not just its alpha.
                         if multisampled && triangle.iter().any(|vertex| vertex.coverage < 1.) {
