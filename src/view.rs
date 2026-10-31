@@ -1187,11 +1187,18 @@ fn line_box(rect: Rect, style: TextStyle) -> Rect {
 /// Header circles, right to left: TV settings first, then each visible input.
 /// A newly connected HDMI simply appears further left.
 pub(crate) fn header_circle_targets(state: &State) -> Vec<(Target, String, String)> {
-    let mut items = vec![(
-        Target::TvSettings,
-        "settings".to_owned(),
-        state.preferences.language.t("settings").to_owned(),
-    )];
+    let mut items = vec![
+        (
+            Target::QuickCog,
+            "settings".to_owned(),
+            "Quick settings".to_owned(),
+        ),
+        (
+            Target::TvSettings,
+            "settings".to_owned(),
+            state.preferences.language.t("settings").to_owned(),
+        ),
+    ];
     for input in state
         .inventory
         .inputs
@@ -1228,6 +1235,7 @@ fn header_circles(out: &mut Scene, state: &State, assets: &Assets) {
         let focus = state.focus_level(&target);
         let lift = rect.inset(-2.7 * focus);
         let radius = lift.w / 2.;
+        let quick = matches!(target, Target::QuickCog);
         out.shadow(
             lift,
             radius,
@@ -1235,11 +1243,14 @@ fn header_circles(out: &mut Scene, state: &State, assets: &Assets) {
             2. + 8. * focus,
             0.06 + 0.24 * focus,
         );
-        out.glass_faded(lift, radius, 1. - focus);
-        if focus > 0. {
+        out.glass_faded(lift, radius, if quick { 1. } else { 1. - focus });
+        if focus > 0. && !quick {
             let start = out.draw.len();
             accent_fill(out, lift, radius, state);
             out.fade(start, focus, 1.);
+        }
+        if quick && focus > 0. {
+            out.border(lift.inset(-4.), radius + 4., 3.5, c(0x9ad7ff, 0.95));
         }
         let ink = blend(c(0xffffff, 0.92), accent_ink(state), focus);
         let size = if icon == "input-apple-tv" { 38. } else { 30. };
@@ -1268,6 +1279,140 @@ fn header_circles(out: &mut Scene, state: &State, assets: &Assets) {
             );
         }
         out.control(target, rect, false);
+    }
+    draw_quick_menu(out, state);
+}
+
+fn draw_quick_menu(out: &mut Scene, state: &State) {
+    if state.quick_layer == crate::state::QuickLayer::Closed || state.ambient_on() {
+        return;
+    }
+    let cog = header_circle_rect(0);
+    let width = 380.;
+    let sound = state.quick_layer == crate::state::QuickLayer::Sound;
+    let rows: u8 = 5;
+    let height = 24. + f32::from(rows) * 76. + if sound { 36. } else { 0. };
+    let x = (cog.x + cog.w - width).clamp(48., 1920. - 48. - width);
+    let mut y = cog.y + cog.h + 14.;
+    if y + height > 1080. - 24. {
+        y = (1080. - 24. - height).max(24.);
+    }
+    let panel = Rect::new(x, y, width, height);
+    out.modal = Some(panel);
+    let start = out.draw.len();
+    out.shadow(panel, 28., 28., 10., 0.28);
+    out.glass(panel, 28.);
+    let title_style = TextStyle::new(26.).weight(600).leading(1.15);
+    let value_style = TextStyle::new(20.).weight(500).leading(1.2);
+    let network = if state.quick_network_pending && state.network_online.is_none() {
+        "Checking"
+    } else {
+        match state.network_online {
+            Some(true) => "Connected",
+            Some(false) => "Not connected",
+            None => "Not available",
+        }
+    };
+    let entries: [(&str, &str, bool, crate::state::Target); 5] = if sound {
+        [
+            (
+                "Quieter",
+                "Volume down",
+                true,
+                crate::state::Target::QuickSound(0),
+            ),
+            (
+                "Louder",
+                "Volume up",
+                true,
+                crate::state::Target::QuickSound(1),
+            ),
+            (
+                "Mute",
+                "Turn sound off",
+                true,
+                crate::state::Target::QuickSound(2),
+            ),
+            (
+                "Unmute",
+                "Turn sound on",
+                true,
+                crate::state::Target::QuickSound(3),
+            ),
+            (
+                "Sound mode",
+                "Not available",
+                false,
+                crate::state::Target::QuickSound(4),
+            ),
+        ]
+    } else {
+        [
+            ("Sound", "Adjust", true, crate::state::Target::QuickItem(0)),
+            (
+                "Sound output",
+                "Not available",
+                false,
+                crate::state::Target::QuickItem(1),
+            ),
+            (
+                "Picture",
+                "Not available",
+                false,
+                crate::state::Target::QuickItem(2),
+            ),
+            ("Network", network, true, crate::state::Target::QuickItem(3)),
+            (
+                "All settings",
+                "Open",
+                true,
+                crate::state::Target::QuickItem(4),
+            ),
+        ]
+    };
+    for (index, (title, value, enabled, target)) in entries.into_iter().enumerate() {
+        let row = Rect::new(x + 12., y + 12. + index as f32 * 76., width - 24., 68.);
+        if state.focus == target {
+            out.shape(row, 16., c(0x9ad7ff, 0.16));
+            out.border(row, 16., 2.5, c(0x9ad7ff, 0.95));
+        }
+        let ink = if enabled {
+            c(0xffffff, 0.96)
+        } else {
+            c(0xffffff, 0.46)
+        };
+        out.text(
+            title,
+            Rect::new(row.x + 16., row.y + 8., row.w - 32., 30.),
+            title_style,
+            ink,
+            false,
+        );
+        out.text(
+            value,
+            Rect::new(row.x + 16., row.y + 36., row.w - 32., 24.),
+            value_style,
+            c(0xffffff, 0.68),
+            false,
+        );
+        out.control(target, row, false);
+    }
+    if sound {
+        out.text(
+            "The TV does not report the current volume.",
+            Rect::new(x + 28., y + 12. + 5. * 76., width - 56., 28.),
+            value_style,
+            c(0xffffff, 0.62),
+            false,
+        );
+    }
+    let progress = if state.preferences.reduced_motion {
+        1.
+    } else {
+        motion::progress(state.quick_opened.elapsed().as_secs_f32(), 0.18)
+    };
+    if progress < 1. {
+        motion::transform_group(&mut out.draw[start..], 0., 12. * (1. - progress), progress);
     }
 }
 

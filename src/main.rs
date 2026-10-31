@@ -32,6 +32,7 @@ mod stacks;
 mod state;
 mod steam;
 mod storage;
+mod tv_quick;
 mod typography;
 mod ui_sound;
 mod vector;
@@ -491,6 +492,7 @@ fn effects(
             }
             Effect::MediaThumbs(id, list) => media::thumbs_request(id, list),
             // Trailers play in Luma's own player too, never the TV's.
+            Effect::Quick(action) => platform.send(Request::Quick(action)),
             Effect::PlayUrl(url, title) => {
                 let request = player::OpenRequest {
                     url,
@@ -2779,6 +2781,22 @@ fn run() -> Result<(), String> {
                         initial_focus = false;
                     }
                 }
+                Response::Quick(result) => {
+                    state.quick_network_pending = false;
+                    match result {
+                        Ok(crate::tv_quick::Outcome::Network(online)) => {
+                            state.network_online = online;
+                        }
+                        Ok(crate::tv_quick::Outcome::Audio) => {}
+                        Err(error) => {
+                            eprintln!("Quick settings: {error}");
+                            if !error.contains("connectionmanager") {
+                                state.notify("The TV did not accept this");
+                            }
+                        }
+                    }
+                    state.dirty = true;
+                }
                 Response::Signals(signals) => {
                     signals_pending = false;
                     if model::apply_signals(&mut state.inventory.inputs, &signals) {
@@ -3498,7 +3516,11 @@ fn run() -> Result<(), String> {
                                     .is_some_and(|(x, y)| !rect.contains(x, y))
                             }) =>
                             {
-                                pending = state.back()
+                                pending = if state.quick_layer != state::QuickLayer::Closed {
+                                    state.close_quick()
+                                } else {
+                                    state.back()
+                                };
                             }
                             _ => {}
                         }

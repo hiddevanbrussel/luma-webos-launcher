@@ -229,6 +229,19 @@ pub enum Target {
     PlayerNextEpisode,
     PlayerClose,
     PlayerPanelClose,
+    /// Header cog that opens Quick Settings.
+    QuickCog,
+    /// Row in the Quick Settings menu.
+    QuickItem(u8),
+    /// Row in the Sound submenu.
+    QuickSound(u8),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QuickLayer {
+    Closed,
+    Main,
+    Sound,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -391,6 +404,8 @@ pub enum Effect {
     PlayUrl(String, String),
     /// Read root features, applying a change first when one is given.
     Root(Option<crate::platform::RootSet>),
+    /// A documented TV quick-settings call (volume or network).
+    Quick(crate::tv_quick::Action),
 }
 
 /// Drag offset with resistance past either end (0..max), the iOS rubber band.
@@ -536,6 +551,10 @@ pub struct State {
     pub last_overlay: Vec<Draw>,
     pub first_home: bool,
     pub overlay: Option<Overlay>,
+    pub quick_layer: QuickLayer,
+    pub quick_opened: Instant,
+    pub network_online: Option<bool>,
+    pub quick_network_pending: bool,
     pub moving: Option<String>,
     pub loading: bool,
     /// Set by Refresh apps: the next inventory also reloads every app icon.
@@ -733,6 +752,10 @@ impl State {
             last_overlay: Vec::new(),
             first_home: true,
             overlay: None,
+            quick_layer: QuickLayer::Closed,
+            quick_opened: Instant::now(),
+            network_online: None,
+            quick_network_pending: false,
             moving: None,
             loading: false,
             reload_artwork: false,
@@ -1148,7 +1171,7 @@ impl State {
     }
     pub fn tick(&mut self) {
         self.screensaver_tick();
-        if self.ambient_animating() {
+        if self.ambient_animating() || self.quick_animating() {
             self.dirty = true;
         }
         self.movie_tick();
@@ -2154,6 +2177,9 @@ impl State {
         }
         self.pointer = false;
         self.dirty = true;
+        if let Some(effects) = self.quick_direction(direction) {
+            return effects;
+        }
         if matches!(self.overlay, Some(Overlay::SystemKeyboard)) {
             // The TV keyboard owns its arrows until Done/Back dismisses it.
             return vec![];
@@ -3539,6 +3565,9 @@ impl State {
             self.leave_ambient();
             return vec![];
         }
+        if let Some(effects) = self.quick_activate() {
+            return effects;
+        }
         if self.page == Page::Home && self.focus == Target::VideoTitle && !self.ambient_on() {
             // The caption gives a short press, then the interface clears away.
             self.ambient = Some((true, Instant::now() + AMBIENT_PRESS));
@@ -4849,6 +4878,129 @@ impl State {
         vec![]
     }
 
+    fn quick_animating(&self) -> bool {
+        self.quick_layer != QuickLayer::Closed
+            && !self.preferences.reduced_motion
+            && self.quick_opened.elapsed() < Duration::from_millis(200)
+    }
+
+    fn quick_direction(&mut self, direction: Direction) -> Option<Vec<Effect>> {
+        if self.quick_layer == QuickLayer::Closed {
+            return None;
+        }
+        match (self.quick_layer, direction, self.focus) {
+            (QuickLayer::Main, Direction::Down, Target::QuickItem(index)) if index + 1 < 5 => {
+                self.focus(Target::QuickItem(index + 1), &[]);
+            }
+            (QuickLayer::Main, Direction::Up, Target::QuickItem(index)) if index > 0 => {
+                self.focus(Target::QuickItem(index - 1), &[]);
+            }
+            (QuickLayer::Main, Direction::Right, Target::QuickItem(0)) => {
+                self.open_quick_sound();
+            }
+            (QuickLayer::Main, Direction::Right, Target::QuickItem(1 | 2)) => {
+                self.notify("Not available on this TV");
+            }
+            (QuickLayer::Main, Direction::Right, Target::QuickItem(3)) => {
+                return Some(self.refresh_quick_network());
+            }
+            (QuickLayer::Main, Direction::Right, Target::QuickItem(4)) => {
+                return Some(vec![Effect::Launch(crate::tv_quick::SETTINGS_APP.into())]);
+            }
+            (QuickLayer::Sound, Direction::Left, _) => {
+                self.quick_layer = QuickLayer::Main;
+                self.quick_opened = Instant::now();
+                self.focus(Target::QuickItem(0), &[]);
+            }
+            (QuickLayer::Sound, Direction::Down, Target::QuickSound(index)) if index + 1 < 5 => {
+                self.focus(Target::QuickSound(index + 1), &[]);
+            }
+            (QuickLayer::Sound, Direction::Up, Target::QuickSound(index)) if index > 0 => {
+                self.focus(Target::QuickSound(index - 1), &[]);
+            }
+            _ => {}
+        }
+        Some(vec![])
+    }
+
+    fn quick_activate(&mut self) -> Option<Vec<Effect>> {
+        if self.focus == Target::QuickCog {
+            if self.quick_layer == QuickLayer::Closed {
+                self.quick_layer = QuickLayer::Main;
+                self.quick_opened = Instant::now();
+                self.focus(Target::QuickItem(0), &[]);
+                return Some(self.refresh_quick_network());
+            }
+            self.quick_layer = QuickLayer::Closed;
+            self.dirty = true;
+            return Some(vec![]);
+        }
+        if self.quick_layer == QuickLayer::Closed {
+            return None;
+        }
+        match self.focus {
+            Target::QuickItem(0) => {
+                self.open_quick_sound();
+                Some(vec![])
+            }
+            Target::QuickItem(1 | 2) => {
+                self.notify("Not available on this TV");
+                Some(vec![])
+            }
+            Target::QuickItem(3) => Some(self.refresh_quick_network()),
+            Target::QuickItem(4) => {
+                Some(vec![Effect::Launch(crate::tv_quick::SETTINGS_APP.into())])
+            }
+            Target::QuickSound(0) => Some(vec![Effect::Quick(crate::tv_quick::Action::VolumeDown)]),
+            Target::QuickSound(1) => Some(vec![Effect::Quick(crate::tv_quick::Action::VolumeUp)]),
+            Target::QuickSound(2) => Some(vec![Effect::Quick(crate::tv_quick::Action::Mute)]),
+            Target::QuickSound(3) => Some(vec![Effect::Quick(crate::tv_quick::Action::Unmute)]),
+            Target::QuickSound(4) => {
+                self.notify("Not available on this TV");
+                Some(vec![])
+            }
+            _ => {
+                self.quick_layer = QuickLayer::Closed;
+                self.dirty = true;
+                Some(vec![])
+            }
+        }
+    }
+
+    pub fn close_quick(&mut self) -> Vec<Effect> {
+        self.quick_layer = QuickLayer::Closed;
+        self.focus(Target::QuickCog, &[]);
+        vec![]
+    }
+
+    fn quick_back(&mut self) -> Vec<Effect> {
+        match self.quick_layer {
+            QuickLayer::Sound => {
+                self.quick_layer = QuickLayer::Main;
+                self.quick_opened = Instant::now();
+                self.focus(Target::QuickItem(0), &[]);
+            }
+            QuickLayer::Main => {
+                self.quick_layer = QuickLayer::Closed;
+                self.focus(Target::QuickCog, &[]);
+            }
+            QuickLayer::Closed => {}
+        }
+        vec![]
+    }
+
+    fn open_quick_sound(&mut self) {
+        self.quick_layer = QuickLayer::Sound;
+        self.quick_opened = Instant::now();
+        self.focus(Target::QuickSound(0), &[]);
+    }
+
+    fn refresh_quick_network(&mut self) -> Vec<Effect> {
+        self.quick_network_pending = true;
+        self.dirty = true;
+        vec![Effect::Quick(crate::tv_quick::Action::Network)]
+    }
+
     pub fn back(&mut self) -> Vec<Effect> {
         if self.ambient_on() {
             self.leave_ambient();
@@ -4856,6 +5008,9 @@ impl State {
         }
         self.pointer = false;
         self.dirty = true;
+        if self.quick_layer != QuickLayer::Closed {
+            return self.quick_back();
+        }
         if self.moving.take().is_some() {
             return vec![];
         }

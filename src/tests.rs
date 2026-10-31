@@ -3472,3 +3472,31 @@ fn unsupported_saved_media_source_is_ignored_without_losing_other_settings() {
     assert_eq!(prefs.stacks[0].collection, "recent");
     assert!(prefs.luma_player);
 }
+
+#[test]
+fn quick_settings_opens_sound_and_back_returns_to_the_cog() {
+    let mut state = ready();
+    state.focus = Target::QuickCog;
+    let opened = state.activate();
+    assert!(
+        opened
+            .iter()
+            .any(|effect| matches!(effect, Effect::Quick(crate::tv_quick::Action::Network)))
+    );
+    assert_eq!(state.focus, Target::QuickItem(0));
+    state.direction(Direction::Down, &[]);
+    assert_eq!(state.focus, Target::QuickItem(1));
+    state.focus = Target::QuickItem(0);
+    assert!(state.activate().is_empty());
+    assert_eq!(state.focus, Target::QuickSound(0));
+    let louder = state.activate();
+    assert!(matches!(
+        louder.as_slice(),
+        [Effect::Quick(crate::tv_quick::Action::VolumeDown)]
+    ));
+    state.back();
+    assert_eq!(state.focus, Target::QuickItem(0));
+    state.back();
+    assert_eq!(state.focus, Target::QuickCog);
+    assert_eq!(state.quick_layer, crate::state::QuickLayer::Closed);
+}

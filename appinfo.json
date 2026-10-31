@@ -1,6 +1,6 @@
 {
   "id": "com.denisefremov.luma",
-  "version": "2.2.161",
+  "version": "2.2.162",
   "vendor": "Luma",
   "type": "native",
   "main": "luma",
@@ -10,7 +10,7 @@
   "appDescription": "A native, remote-first webOS launcher with customizable home screens, media, games, widgets, and wallpapers.",
   "resolution": "1920x1080",
   "appCategory": ["home"],
-  "requiredACG": ["application.launcher", "application.query", "lunabus.query"],
+  "requiredACG": ["application.launcher", "application.query", "audio.operation", "lunabus.query", "network.query"],
   "handlesRelaunch": false,
   "iconColor": "#25272d",
   "splashBackground": "splash.png",

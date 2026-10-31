@@ -47,6 +47,8 @@ pub enum Request {
     Root(Option<RootSet>),
     /// Which HDMI ports carry a picture right now.
     Signals,
+    /// Documented TV quick settings: volume or network status.
+    Quick(crate::tv_quick::Action),
 }
 pub enum Response {
     Inventory(Result<(Inventory, Option<String>), String>),
@@ -55,6 +57,8 @@ pub enum Response {
     Root(Result<Option<RootStatus>, String>),
     /// (HDMI port number, picture present).
     Signals(Vec<(u8, bool)>),
+    /// TV quick-settings result.
+    Quick(Result<crate::tv_quick::Outcome, String>),
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -93,6 +97,12 @@ impl Platform {
                         hdmi_signals().unwrap_or_default()
                     } else {
                         vec![]
+                    }),
+                    Request::Quick(action) => Response::Quick(if webos {
+                        let (uri, payload) = crate::tv_quick::request(action);
+                        call(uri, payload).map(|value| crate::tv_quick::interpret(action, &value))
+                    } else {
+                        Err("Quick settings run on the TV".into())
                     }),
                     Request::Root(change) => Response::Root(if webos {
                         root_features(change)
