@@ -411,11 +411,9 @@ fn dashboard_loop(
                         );
                         let _ = commands.send(Command::CredentialsReady { server });
                     }
-                    Err(error) => reply(
-                        &mut stream,
-                        "400 Bad Request",
-                        &dashboard_page(Some(error)),
-                    ),
+                    Err(error) => {
+                        reply(&mut stream, "400 Bad Request", &dashboard_page(Some(error)))
+                    }
                 },
                 Err(error) => reply(
                     &mut stream,
