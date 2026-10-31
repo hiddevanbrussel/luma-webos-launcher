@@ -44,12 +44,14 @@ for fam in FAMILIES:
  roles=[]
  if fam in HEADING: roles.append(('heading',[800,900] if fam=='nunito' else [800 if fam in ('archivo','inter','unbounded') else 700]))
  if fam in TEXT and cyr: roles.append(('text',[400,500,600]))
+ elif fam in HEADING: roles.append(('text',[600]))
  if not roles: continue
  for role,weights in roles:
   for weight in weights:
    ft=TTFont(path)
    if axes:
-    vals={k:(min(max(weight,lo),hi) if k=='wght' else min(max(32 if role=='heading' else 14,lo),hi) if k=='opsz' else de) for k,(lo,de,hi) in axes.items()}
+    opsz=32 if role=='heading' or fam not in TEXT else 14
+    vals={k:(min(max(weight,lo),hi) if k=='wght' else min(max(opsz,lo),hi) if k=='opsz' else de) for k,(lo,de,hi) in axes.items()}
     ft=instantiateVariableFont(ft,vals,inplace=False)
    opts=subset.Options();opts.layout_features=['*'];opts.notdef_glyph=True;opts.notdef_outline=True
    su=subset.Subsetter(options=opts);su.populate(unicodes=UC);su.subset(ft)

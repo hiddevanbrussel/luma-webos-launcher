@@ -2674,7 +2674,9 @@ fn catalog_font_id(family: &str, heading: bool, weight: u16) -> u16 {
         .position(|&name| name == family)
         .unwrap_or(1) as u16;
     let face = if heading {
-        if family == "nunito" {
+        if weight < 700 {
+            600
+        } else if family == "nunito" {
             if weight >= 850 { 900 } else { 800 }
         } else if matches!(family, "archivo" | "inter" | "unbounded") {
             800

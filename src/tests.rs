@@ -2774,6 +2774,18 @@ fn typography_all_pages_use_semantic_tv_scale() {
                     assert!(style.size >= 21.);
                     continue;
                 }
+                // Home greeting is a step below the 108/800 hero.
+                let greeting = page == 0 && rect.x <= 84.1 && (240. ..=520.).contains(&rect.y);
+                if greeting {
+                    assert!(
+                        (40. ..=96.).contains(&style.size),
+                        "greeting text: {}",
+                        style.size
+                    );
+                    assert!(style.weight >= 500 && style.weight < 800);
+                    seen += 1;
+                    continue;
+                }
                 if weather {
                     assert!(
                         (18. ..=84.).contains(&style.size),

@@ -92,7 +92,9 @@ impl Assets {
         let body = style.text_override.unwrap_or(self.active_text.get());
         let family = if display { heading.id() } else { body.id() };
         let weight = if display {
-            if family == "nunito" {
+            if style.weight < 700 {
+                600
+            } else if family == "nunito" {
                 if style.weight >= 850 { 900 } else { 800 }
             } else if matches!(family, "archivo" | "inter" | "unbounded") {
                 800
@@ -1723,13 +1725,13 @@ fn draw_rude_phrase(
     let subtitle_k = sizes.1 as f32 / 100.;
     // The former text(74) silently mapped to the 52px Title token. Use an
     // explicit display size, then shrink ONLY when needed for two lines.
-    let mut size = 78. * title_k;
+    let mut size = 66. * title_k;
     let style = loop {
         let candidate = TextStyle::new(size)
-            .weight(800)
-            .tracking(-0.04)
+            .weight(600)
+            .tracking(-0.03)
             .display(true)
-            .leading(1.03);
+            .leading(1.08);
         if assets.lines(&phrase.title, candidate, wrap) <= 2 || size <= 42. * title_k {
             break candidate;
         }
@@ -1955,6 +1957,15 @@ const GLASS_PLAIN: f32 = 0.66;
 const PHRASE_TOP: f32 = 268.;
 const PHRASE_W: f32 = 1140.;
 
+/// Time-of-day greeting. Smaller and a step lighter than the 108/800 hero.
+fn greeting_style() -> TextStyle {
+    TextStyle::new(92.)
+        .weight(600)
+        .tracking(-0.03)
+        .leading(1.08)
+        .display(true)
+}
+
 fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
     let language = state.preferences.language;
     let s = state.scroll + state.bounce_at(crate::state::BounceAxis::Page) - HOME_DROP;
@@ -2023,9 +2034,9 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
                     84.,
                     PHRASE_TOP - shift - s,
                     widgets_view::phrase_width(state),
-                    109.,
+                    100.,
                 ),
-                text(99., 550, -0.055).display(true).leading(1.05),
+                greeting_style(),
                 WHITE,
                 false,
             );
@@ -2038,9 +2049,9 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
                 84.,
                 PHRASE_TOP - shift - s,
                 widgets_view::phrase_width(state),
-                95.,
+                100.,
             ),
-            text(90.4, 500, -0.065).display(true).leading(1.05),
+            greeting_style(),
             WHITE,
             false,
         );
